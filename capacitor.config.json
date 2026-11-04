@@ -1,0 +1,13 @@
+{
+  "appId": "de.meineliste.app",
+  "appName": "Meine Liste",
+  "webDir": "www",
+  "server": {
+    "url": "https://meine-liste-08gd2z.v2.appdeploy.ai/",
+    "cleartext": false,
+    "allowNavigation": ["meine-liste-08gd2z.v2.appdeploy.ai", "*.appdeploy.ai"]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

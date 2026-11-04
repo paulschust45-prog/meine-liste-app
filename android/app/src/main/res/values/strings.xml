@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Meine Liste</string>
+    <string name="title_activity_main">Meine Liste</string>
+    <string name="package_name">de.meineliste.app</string>
+    <string name="custom_url_scheme">de.meineliste.app</string>
+    <string name="guard_service_label">Meine Liste – Handykontrolle</string>
+    <string name="guard_service_desc">Erkennt, welche App du öffnest, und sperrt die Apps, die du in Meine Liste ausgewählt hast – bis deine Aufgaben erledigt sind. Es werden keine Inhalte gelesen und nichts gesendet.</string>
+</resources>
