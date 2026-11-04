@@ -48,7 +48,7 @@ public class GuardService extends AccessibilityService {
         }
 
         // 2) Gesperrte App (Handykontrolle / Hardcore)
-        if (!store.rulesOn() || store.allowed(pkg)) return;
+        if (!store.rulesOn() || store.allowed(pkg) || store.emergencyActive()) return;
         boolean blocked = store.apps().contains(pkg) || (store.level() >= 3 && isSettings(pkg) && store.apps().size() > 0);
         if (!blocked) return;
         Intent b = new Intent(this, BlockActivity.class);

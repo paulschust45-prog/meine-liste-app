@@ -1,6 +1,9 @@
 package de.meineliste.app.guard;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.text.InputType;
+import android.widget.EditText;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -168,11 +171,11 @@ public class BlockActivity extends Activity {
         box.addView(back);
 
         if (store.level() <= 1) {
-            laterLabel = "Trotzdem öffnen (1 Minute)";
+            laterLabel = "Weiter";
             later = button(laterLabel, false);
             later.setOnClickListener(v -> {
                 if (waitLeft > 0) return;
-                store.allow(pkg, 60 * 1000);
+                store.allow(pkg, 5 * 60 * 1000);
                 openTarget();
             });
             box.addView(later);
@@ -184,6 +187,14 @@ public class BlockActivity extends Activity {
                 if (store.takePause()) openTarget();
             });
             box.addView(later);
+        }
+        // Notfall-Code: schaltet die Sperre bis Mitternacht ab
+        if (!store.hash().isEmpty()) {
+            TextView code = text(14, "#CCF2ECE6", Typeface.DEFAULT);
+            code.setText("Notfall-Code eingeben");
+            code.setPadding(0, dp(18), 0, dp(4));
+            code.setOnClickListener(v -> askCode());
+            box.addView(code);
         }
         root.addView(box, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
 
@@ -224,6 +235,29 @@ public class BlockActivity extends Activity {
             }
         }
         ui.postDelayed(this::tick, 1000);
+    }
+
+    private void askCode() {
+        final EditText in = new EditText(this);
+        in.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        in.setHint("Notfall-Code");
+        in.setPadding(dp(20), dp(12), dp(20), dp(12));
+        new AlertDialog.Builder(this)
+            .setTitle("Sperre im Notfall abschalten")
+            .setMessage("Gilt bis Mitternacht.")
+            .setView(in)
+            .setPositiveButton("Entsperren", (d, w) -> {
+                if (GuardStore.hashCode(in.getText().toString()).equals(store.hash())) {
+                    store.emergencyOff();
+                    toast(this, "Sperre bis Mitternacht aus.");
+                    openTarget();
+                } else {
+                    toast(this, "Falscher Code.");
+                }
+            })
+            .setNegativeButton("Abbrechen", null)
+            .show();
+        in.requestFocus();
     }
 
     private void openTarget() {

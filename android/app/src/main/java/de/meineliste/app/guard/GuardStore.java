@@ -83,6 +83,27 @@ public class GuardStore {
             .apply();
     }
 
+    // ---------- Notfall-Code ----------
+    private static String today() {
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY).format(new Date());
+    }
+    /** Sperre bis Mitternacht aus (nach richtigem Notfall-Code) */
+    public void emergencyOff() { p.edit().putString("emergency_day", today()).apply(); }
+    public boolean emergencyActive() { return today().equals(p.getString("emergency_day", "")); }
+
+    /** Gleicher Hash wie in der Web-App: SHA-256 von "meine-liste:" + Code (klein, ohne Leerzeichen am Rand) */
+    public static String hashCode(String word) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] d = md.digest(("meine-liste:" + word.trim().toLowerCase(Locale.ROOT)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     // ---------- Kurze Freigaben ----------
     /** Wegklicken bei Stufe 1: eine App für kurze Zeit freigeben */
     public void allow(String pkg, long ms) { p.edit().putLong("pass_" + pkg, System.currentTimeMillis() + ms).apply(); }
