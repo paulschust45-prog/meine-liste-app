@@ -28,6 +28,10 @@ public class GuardStore {
     public int level() { return p.getInt("level", 2); }
     public boolean pauseAllowed() { return p.getBoolean("pauseAllowed", false); }
     public String hash() { return p.getString("hash", ""); }
+    /** "free" = Weiter unbegrenzt, "limited" = Weiter 3× 5 Min., "none" = nur Notfall-Pause */
+    public String skip() { return p.getString("skip", "limited"); }
+    public void setSkip(String v) { p.edit().putString("skip", v == null ? "limited" : v).apply(); }
+
     public String message() { return p.getString("message", "Erst die Aufgabe, dann das Handy."); }
 
     public void setRules(boolean on, Set<String> apps, int level, boolean pauseAllowed, String hash, String message) {

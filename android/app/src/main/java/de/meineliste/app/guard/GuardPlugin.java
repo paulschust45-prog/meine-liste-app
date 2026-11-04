@@ -117,6 +117,7 @@ public class GuardPlugin extends Plugin {
         Integer level = call.getInt("level", 2);
         s.setRules(on, apps, level == null ? 2 : level, Boolean.TRUE.equals(call.getBoolean("pause", false)), hash,
             call.getString("message", "Erst die Aufgabe, dann das Handy."));
+        s.setSkip(call.getString("skip", "limited"));
         call.resolve();
     }
 

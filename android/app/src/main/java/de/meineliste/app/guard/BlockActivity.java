@@ -180,7 +180,9 @@ public class BlockActivity extends Activity {
             });
             box.addView(later);
         } else if (store.pauseAllowed() && store.pausesLeft() > 0) {
-            laterLabel = "Notfall-Pause 5 Min. (" + store.pausesLeft() + " übrig)";
+            laterLabel = "limited".equals(store.skip())
+                ? "Weiter (noch " + store.pausesLeft() + "× 5 Min. heute)"
+                : "Notfall-Pause 5 Min. (" + store.pausesLeft() + " übrig)";
             later = button(laterLabel, false);
             later.setOnClickListener(v -> {
                 if (waitLeft > 0) return;
