@@ -70,7 +70,7 @@ type Rep = 'none' | 'daily' | 'weekly';
 type View = 'list' | 'week' | 'matrix';
 type Sync = 'local' | 'saving' | 'saved' | 'error';
 type Prio = 'all' | 'imp' | 'urg';
-type Page = 'main' | 'overview' | 'areas' | 'styles' | 'control' | 'settings' | 'rituals';
+type Page = 'main' | 'overview' | 'areas' | 'styles' | 'control' | 'settings' | 'rituals' | 'block';
 
 interface Task {
   id: string;
@@ -679,6 +679,10 @@ export default function Planner() {
   const [flash, setFlash] = useState('');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [focusMin, setFocusMin] = useState<number | undefined>(undefined);
+  // Fokus-Block: Auswahl im Menü, dann ein Timer für mehrere Aufgaben
+  const [blockPick, setBlockPick] = useState<string[]>([]);
+  const [blockMin, setBlockMin] = useState(45);
+  const [block, setBlock] = useState<{ ids: string[]; min: number } | null>(null);
   const [askLater, setAskLater] = useState<{ t: Task; q: number } | null>(null);
   const [ritualId, setRitualId] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -1778,11 +1782,13 @@ export default function Planner() {
     control: 'Handykontrolle',
     settings: 'Einstellungen',
     rituals: 'Routinen',
+    block: 'Fokus',
   };
   const sheetBack: Record<Page, Page> = {
     main: 'main',
     overview: 'main',
     rituals: 'main',
+    block: 'main',
     settings: 'main',
     areas: 'settings',
     styles: 'settings',
@@ -2391,12 +2397,15 @@ export default function Planner() {
                       disabled={!open.length}
                       onClick={() => {
                         if (!open.length) return;
-                        setSheet(null);
-                        setFocusId(open[0].id);
+                        setBlockPick(open.slice(0, 1).map(t => t.id));
+                        setSheet('block');
                       }}
                     >
                       <Target size={18} />
-                      <span>Fokus starten</span>
+                      <span>
+                        Fokus starten
+                        <small className="nv-rowsub">Eine Aufgabe oder ein ganzer Block mit Timer</small>
+                      </span>
                       <ChevronRight size={18} />
                     </button>
                     <button className="nv-navrow" onClick={() => setSheet('rituals')}>
@@ -2427,6 +2436,71 @@ export default function Planner() {
                       <ChevronRight size={18} />
                     </button>
                     {!user && <p className="nv-note">Nicht angemeldet – die Liste ist nur auf diesem Gerät.</p>}
+                  </section>
+                </>
+              )}
+
+              {sheet === 'block' && (
+                <>
+                  <section className="nv-sec">
+                    <h3>Was kommt in den Fokus?</h3>
+                    <div className="bk-list">
+                      {open.map(t => {
+                        const on = blockPick.includes(t.id);
+                        return (
+                          <button
+                            key={t.id}
+                            className="bk-row"
+                            aria-pressed={on}
+                            onClick={() => setBlockPick(v => (on ? v.filter(x => x !== t.id) : [...v, t.id]))}
+                          >
+                            <span className="bk-chk">{on && <Check size={13} strokeWidth={3} />}</span>
+                            <span className="bk-txt">{t.text}</span>
+                            <i className="bk-dot" style={{ background: areaOf(t).color }} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="bk-quick">
+                      <button className="nv-link" onClick={() => setBlockPick(open.slice(0, 3).map(t => t.id))}>
+                        Die nächsten 3
+                      </button>
+                      <button className="nv-link" onClick={() => setBlockPick(open.filter(t => t.imp).map(t => t.id))}>
+                        Alle wichtigen
+                      </button>
+                      {blockPick.length > 0 && (
+                        <button className="nv-link" onClick={() => setBlockPick([])}>
+                          Keine
+                        </button>
+                      )}
+                    </div>
+                  </section>
+                  <section className="nv-sec">
+                    <h3>Wie lange?</h3>
+                    <div className="nv-chips">
+                      {[15, 25, 45, 60, 90].map(m => (
+                        <span key={m}>{fchip(blockMin === m, () => setBlockMin(m), m + ' Min')}</span>
+                      ))}
+                    </div>
+                    <button
+                      className="nv-btn pri nv-planbig"
+                      disabled={!blockPick.length}
+                      onClick={() => {
+                        const ids = open.filter(t => blockPick.includes(t.id)).map(t => t.id);
+                        if (!ids.length) return;
+                        setSheet(null);
+                        if (ids.length === 1) {
+                          setFocusMin(blockMin);
+                          setFocusId(ids[0]);
+                        } else setBlock({ ids, min: blockMin });
+                      }}
+                    >
+                      <Target size={16} />
+                      {blockPick.length > 1
+                        ? 'Fokus-Block starten · ' + blockPick.length + ' Aufgaben'
+                        : 'Fokus starten'}
+                    </button>
+                    <p className="nv-note">Ein Timer für alles, was du auswählst. Abhaken direkt im Fokus.</p>
                   </section>
                 </>
               )}
@@ -3257,6 +3331,48 @@ export default function Planner() {
       )}
 
       {/* Fokus */}
+      {block && !focusTask && (
+        <Focus
+          key="block"
+          text={'Fokus-Block · ' + block.ids.length + ' Aufgaben'}
+          imp={false}
+          urg={false}
+          areaName={block.min + ' Minuten'}
+          areaColor="#8f8a7e"
+          prefs={meta.focus}
+          signedIn={!!user}
+          todaySec={meta.stats[today]?.s || 0}
+          onLog={(ms, session) => logFocus(ms, session)}
+          onPrefs={f => commitMeta({ ...metaRef.current, focus: f })}
+          onTaskCover={() => undefined}
+          strict={meta.mode !== 'normal'}
+          startMin={block.min}
+          batch={block.ids
+            .map(id => tasks.find(t => t.id === id))
+            .filter((t): t is Task => !!t)
+            .map(t => ({ id: t.id, text: t.text, done: !!t.done[date] }))}
+          onBatchToggle={id => {
+            const t = tasksRef.current.find(x => x.id === id);
+            if (!t) return;
+            if (t.done[date]) {
+              const d = { ...t.done };
+              delete d[date];
+              commit(tasksRef.current.map(x => (x.id === id ? { ...x, done: d } : x)));
+              return;
+            }
+            if (t.proof && !t.proofs?.[date]) {
+              setFlash('„' + t.text + '“ braucht ein Foto – nach dem Block in der Liste abhaken.');
+              return;
+            }
+            logFocus(0, false, true);
+            commit(tasksRef.current.map(x => (x.id === id ? { ...x, done: { ...x.done, [date]: true as const } } : x)));
+          }}
+          onDone={() => undefined}
+          onNext={() => setBlock(null)}
+          onClose={() => setBlock(null)}
+        />
+      )}
+
       {focusTask && (
         <Focus
           key={focusTask.id}
