@@ -645,6 +645,35 @@ export default function Planner() {
   const composeRef = useRef<HTMLInputElement>(null);
   const [moodsOpen, setMoodsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Rad (Strenge „Locker“): frei hoch und runter scrollen
+  const wheelRef = useRef<HTMLDivElement>(null);
+  const [wheelAt, setWheelAt] = useState(0);
+  const wheelRaf = useRef(0);
+  const onWheelScroll = () => {
+    cancelAnimationFrame(wheelRaf.current);
+    wheelRaf.current = requestAnimationFrame(() => {
+      const el = wheelRef.current;
+      if (!el) return;
+      const top = el.scrollTop + 30;
+      let best = 0;
+      let bd = Infinity;
+      Array.from(el.children).forEach((c, i) => {
+        const h = c as HTMLElement;
+        const d = Math.abs(h.offsetTop - top);
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
+      });
+      setWheelAt(best);
+    });
+  };
+  const wheelTo = (i: number) => {
+    const el = wheelRef.current;
+    const c = el?.children[i] as HTMLElement | undefined;
+    if (!el || !c) return;
+    el.scrollTo({ top: c.offsetTop - 30, behavior: 'smooth' });
+  };
   const [wipeAsk, setWipeAsk] = useState(false);
   const wiped = useRef<Task[]>([]);
   const [flash, setFlash] = useState('');
@@ -1498,6 +1527,8 @@ export default function Planner() {
   const dxOf = (t: Task) => (drag && drag.id === t.id ? drag.dx : 0);
   const restCount = Math.max(0, open.length - leaving.length - 3);
   const hour = new Date().getHours();
+  const wheelOn = meta.mode === 'normal' && !hardOn;
+  const wheelCur = Math.max(0, Math.min(wheelAt, live.length - 1));
   const greet = hour < 5 ? 'Gute Nacht' : hour < 11 ? 'Guten Morgen' : hour < 17 ? 'Hallo' : hour < 22 ? 'Guten Abend' : 'Gute Nacht';
   const firstName = user && !user.includes('@') ? user.split(' ')[0] : '';
   const slot = slotNow(hour);
@@ -1963,7 +1994,94 @@ export default function Planner() {
         </div>
 
         <section className={'nv-stair' + (clearing ? ' clearing' : '')} aria-label="Nächste Aufgaben">
-          {pastRows.map((t, i) => (
+          {wheelOn && live.length > 0 && (
+            <div className="nv-wheel" ref={wheelRef} onScroll={onWheelScroll}>
+              {live.map((t, i) => {
+                const d = Math.abs(i - wheelCur);
+                const center = d === 0 && !leaving.includes(t.id);
+                return (
+                  <div
+                    key={t.id}
+                    className={'nv-wrow w' + Math.min(d, 3) + (leaving.includes(t.id) ? ' sout' : '')}
+                    onClickCapture={e => {
+                      if (d > 1) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        wheelTo(i);
+                      }
+                    }}
+                  >
+                    <div className="nv-swipe">
+                      {center && (
+                        <div className="nv-under" aria-hidden="true">
+                          <span className="tm" style={{ opacity: Math.min(1, Math.max(0, dxOf(t)) / 90) }}>
+                            Auf morgen
+                            <ArrowRight size={16} />
+                          </span>
+                          <span className="lt" style={{ opacity: Math.min(1, Math.max(0, -dxOf(t)) / 90) }}>
+                            <Undo2 size={16} />
+                            Später
+                          </span>
+                        </div>
+                      )}
+                      <article
+                        className={'nv-card' + (t.imp ? ' imp' : '') + (t.urg ? ' urg' : '') + (dxOf(t) ? ' drag' : '')}
+                        style={{
+                          ...cv(areaOf(t).color),
+                          transform: dxOf(t) ? 'translateX(' + dxOf(t) + 'px) rotate(' + dxOf(t) / 45 + 'deg)' : undefined,
+                        }}
+                        onPointerDown={center ? swipeDown(t) : undefined}
+                        onPointerMove={center ? swipeMove : undefined}
+                        onPointerUp={center ? swipeUp(t) : undefined}
+                        onPointerCancel={center ? swipeCancel : undefined}
+                      >
+                        <button
+                          className="nv-check"
+                          aria-label={t.text + (t.proof ? ' mit Foto erledigen' : ' erledigen')}
+                          onClick={() => {
+                            if (!suppress.current) complete(t);
+                          }}
+                          tabIndex={d <= 1 ? 0 : -1}
+                        >
+                          {t.proof ? <Camera size={14} /> : <Check size={14} strokeWidth={3} />}
+                        </button>
+                        <div
+                          className="nv-cbody"
+                          onClick={() => {
+                            if (suppress.current) return;
+                            if (d === 0) setEdit({ ...t });
+                            else wheelTo(i);
+                          }}
+                        >
+                          <p className="nv-ctext">{t.text}</p>
+                          {tags(t, date, true)}
+                        </div>
+                        {center && (
+                          <button
+                            className="nv-focusbtn"
+                            aria-label={'Fokus-Modus für ' + t.text}
+                            title="Fokus"
+                            onClick={() => {
+                              if (!suppress.current) setFocusId(t.id);
+                            }}
+                          >
+                            <Target size={17} />
+                          </button>
+                        )}
+                      </article>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {wheelOn && live.length > 1 && (
+            <p className="nv-wheelhint" aria-hidden="true">
+              {wheelCur + 1} von {live.length}
+            </p>
+          )}
+          {!wheelOn &&
+            pastRows.map((t, i) => (
             <div
               key={t.id}
               className={'nv-step ' + (i === pastRows.length - 1 ? 'spast' : 'sgone')}
@@ -1981,7 +2099,8 @@ export default function Planner() {
               </div>
             </div>
           ))}
-          {steps.map(({ t, s }) => (
+          {!wheelOn &&
+            steps.map(({ t, s }) => (
             <div
               key={t.id}
               className={'nv-step ' + (s < 0 ? 'sout l' : 's' + Math.min(s, 3))}
@@ -2088,7 +2207,7 @@ export default function Planner() {
             </div>
           )}
 
-          {restCount > 0 && (
+          {restCount > 0 && !wheelOn && (
             <button
               className="nv-more"
               onClick={() => {

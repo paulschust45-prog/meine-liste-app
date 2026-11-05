@@ -3406,7 +3406,7 @@ body {
 }
 .nv-step.s0 {
   transform: none;
-  transform-origin: 50% 50%;
+  transform-origin: 50% 0;
 }
 .nv-step.s1 {
   opacity: 0.42;
@@ -4852,4 +4852,72 @@ button.nv-moods-q {
 .nv-dots,
 .nv-navrow {
   transition: background-color 0.6s ease, color 0.6s ease, border-color 0.6s ease;
+}
+
+/* =========================================================
+   Rad (Locker): frei scrollen, Mitte ist dran
+   ========================================================= */
+.nv-wheel {
+  --wh: min(54vh, 440px);
+  position: relative;
+  height: var(--wh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 30px;
+  scrollbar-width: none;
+  padding: 30px 2px calc(var(--wh) - 150px);
+  margin: -30px -2px 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 30px, #000 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 30px, #000 70%, transparent 100%);
+}
+.nv-wheel::-webkit-scrollbar {
+  display: none;
+}
+.nv-wrow {
+  scroll-snap-align: start;
+  padding: 5px 0;
+  transition: opacity 0.25s ease, transform 0.25s ease, filter 0.25s ease;
+  transform-origin: 50% 0;
+}
+.nv-wrow.w0 {
+  opacity: 1;
+}
+.nv-wrow.w1 {
+  opacity: 0.6;
+  transform: scale(0.96);
+}
+.nv-wrow.w2 {
+  opacity: 0.32;
+  transform: scale(0.92);
+}
+.nv-wrow.w3 {
+  opacity: 0.16;
+  transform: scale(0.88);
+}
+.nv-wrow:not(.w0) .nv-card {
+  box-shadow: none;
+}
+.nv-wrow.w2,
+.nv-wrow.w3 {
+  cursor: pointer;
+}
+.nv-wrow.sout {
+  opacity: 0;
+  transform: translateX(40px) scale(0.95);
+}
+.nv-wheelhint {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+.nv.has-photo .nv-wheelhint {
+  color: rgba(255, 255, 255, 0.8);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nv-wrow {
+    transition: none;
+  }
 }
