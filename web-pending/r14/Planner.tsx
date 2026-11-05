@@ -1635,9 +1635,25 @@ export default function Planner() {
               : 'Erst die erste Aufgabe des Tages erledigen.',
       };
     }
-    const off = { ...r, on: false, hash: guardHash.current };
-    g.setRules(r.on ? r : off).catch(() => undefined);
-    guardHash.current = r.on ? r.hash : '';
+    if (r.on) {
+      g.setRules(r).catch(() => undefined);
+      guardHash.current = r.hash;
+      return;
+    }
+    // Ausschalten: das Gerät verlangt den Hash, mit dem gesperrt wurde. Nach einem Neustart der App
+    // kennen wir ihn nicht mehr sicher – darum alle in Frage kommenden nacheinander probieren.
+    const tries = Array.from(new Set([guardHash.current, c.codeHash, meta.hard.hash, '']));
+    (async () => {
+      for (const h of tries) {
+        try {
+          await g.setRules({ ...r, on: false, hash: h });
+          guardHash.current = '';
+          return;
+        } catch {
+          /* nächster */
+        }
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guardKey]);
 
