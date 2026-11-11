@@ -118,6 +118,8 @@ public class GuardPlugin extends Plugin {
         s.setRules(on, apps, level == null ? 2 : level, Boolean.TRUE.equals(call.getBoolean("pause", false)), hash,
             call.getString("message", "Erst die Aufgabe, dann das Handy."));
         s.setSkip(call.getString("skip", "limited"));
+        Integer grace = call.getInt("grace", 0);
+        s.setPopup(grace == null ? 0 : grace, joinArr(call.getArray("todos", new JSArray())), joinArr(call.getArray("relax", new JSArray())));
         call.resolve();
     }
 
@@ -179,5 +181,22 @@ public class GuardPlugin extends Plugin {
         }
         s.stopFocus();
         call.resolve();
+    }
+
+    private static String joinArr(JSArray a) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            int n = 0;
+            for (Object o : a.toList()) {
+                if (o == null) continue;
+                String v = o.toString().replace('\n', ' ').trim();
+                if (v.isEmpty()) continue;
+                if (n++ > 0) sb.append('\n');
+                sb.append(v.length() > 80 ? v.substring(0, 80) : v);
+                if (n >= 3) break;
+            }
+        } catch (JSONException ignored) {
+        }
+        return sb.toString();
     }
 }

@@ -166,6 +166,12 @@ public class BlockActivity extends Activity {
         msg.setPadding(0, 0, 0, dp(22));
         if (!q.isEmpty()) box.addView(msg);
 
+        // Vorschläge: „Mach doch lieber das“ + etwas Leichtes für zwischendurch
+        String[] todos = store.todos();
+        String[] relax = store.relax();
+        if (todos.length > 0) box.addView(suggest("MACH DOCH LIEBER DAS", todos));
+        if (relax.length > 0) box.addView(suggest("ODER WAS LEICHTES", relax));
+
         Button back = button("Zurück zu Meine Liste", true);
         back.setOnClickListener(v -> goHome());
         box.addView(back);
@@ -205,6 +211,35 @@ public class BlockActivity extends Activity {
         // Warte-Timer: erst nach X Sekunden lässt sich die Sperre umgehen
         waitLeft = later != null ? store.waitSec() : 0;
         tick();
+    }
+
+    /** Kleine Karte mit bis zu zwei Aufgaben – Tippen öffnet Meine Liste */
+    private LinearLayout suggest(String head, String[] items) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(dp(16), dp(12), dp(16), dp(12));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(16));
+        bg.setColor(Color.parseColor("#33000000"));
+        bg.setStroke(dp(1), Color.parseColor("#33F2ECE6"));
+        c.setBackground(bg);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(10);
+        c.setLayoutParams(lp);
+        TextView h = text(11, "#B3F2ECE6", Typeface.DEFAULT_BOLD);
+        h.setLetterSpacing(0.16f);
+        h.setGravity(Gravity.START);
+        h.setText(head);
+        c.addView(h);
+        for (int i = 0; i < Math.min(2, items.length); i++) {
+            TextView t = text(16, "#F2ECE6", Typeface.DEFAULT);
+            t.setGravity(Gravity.START);
+            t.setText("•  " + items[i]);
+            t.setPadding(0, dp(6), 0, 0);
+            c.addView(t);
+        }
+        c.setOnClickListener(v -> goHome());
+        return c;
     }
 
     private void tick() {

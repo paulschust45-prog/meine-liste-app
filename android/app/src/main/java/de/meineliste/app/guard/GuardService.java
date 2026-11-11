@@ -2,6 +2,8 @@ package de.meineliste.app.guard;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.accessibility.AccessibilityEvent;
 
 import de.meineliste.app.MainActivity;
@@ -15,6 +17,9 @@ public class GuardService extends AccessibilityService {
     private GuardStore store;
     private String last = "";
     private long lastAt = 0;
+    /** App, die gerade wirklich vorne ist (für das Ende der Schonfrist) */
+    private String fg = "";
+    private final Handler ui = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onServiceConnected() {
@@ -27,6 +32,7 @@ public class GuardService extends AccessibilityService {
         if (e.getPackageName() == null) return;
         if (store == null) store = new GuardStore(this);
         String pkg = e.getPackageName().toString();
+        if (!pkg.contains("inputmethod") && !pkg.contains("keyboard") && !pkg.equals("com.android.systemui")) fg = pkg;
         if (pkg.equals(getPackageName()) || isAlwaysAllowed(pkg)) return;
 
         // Nicht dauernd neu auslösen, wenn dieselbe App mehrere Fenster meldet
@@ -51,6 +57,20 @@ public class GuardService extends AccessibilityService {
         if (!store.rulesOn() || store.allowed(pkg) || store.emergencyActive()) return;
         boolean blocked = store.apps().contains(pkg) || (store.level() >= 3 && isSettings(pkg) && store.apps().size() > 0);
         if (!blocked) return;
+        // Schonfrist: erst ein paar Minuten normal, dann kommt das Pop-up
+        if (store.inGrace(pkg)) return;
+        if (store.grantGrace(pkg)) {
+            BlockActivity.toast(this, "Noch " + store.graceMin() + " Min. – dann erinnere ich dich.");
+            final String target = pkg;
+            ui.postDelayed(() -> {
+                if (target.equals(fg) && store.rulesOn() && !store.allowed(target) && !store.emergencyActive()) showBlock(target);
+            }, store.graceUntil(pkg) - System.currentTimeMillis() + 500);
+            return;
+        }
+        showBlock(pkg);
+    }
+
+    private void showBlock(String pkg) {
         Intent b = new Intent(this, BlockActivity.class);
         b.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         b.putExtra("pkg", pkg);

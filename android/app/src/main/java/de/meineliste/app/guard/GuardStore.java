@@ -108,6 +108,33 @@ public class GuardStore {
         }
     }
 
+    // ---------- Eigenes Pop-up: Schonfrist und Vorschläge ----------
+    /** Minuten, die eine gesperrte App erst normal nutzbar ist, bevor das Pop-up kommt (0 = sofort) */
+    public int graceMin() { return p.getInt("grace_min", 0); }
+    /** Nächste To-dos und leichte To-dos, die das Pop-up vorschlägt (mit \n getrennt) */
+    public String[] todos() { return split(p.getString("todos", "")); }
+    public String[] relax() { return split(p.getString("relax", "")); }
+    private static String[] split(String v) { return v == null || v.isEmpty() ? new String[0] : v.split("\n"); }
+    public void setPopup(int grace, String todos, String relax) {
+        p.edit()
+            .putInt("grace_min", Math.max(0, Math.min(30, grace)))
+            .putString("todos", todos == null ? "" : todos)
+            .putString("relax", relax == null ? "" : relax)
+            .apply();
+    }
+    /** Läuft für diese App gerade die Schonfrist? */
+    public boolean inGrace(String pkg) { return System.currentTimeMillis() < p.getLong("grace_until_" + pkg, 0); }
+    public long graceUntil(String pkg) { return p.getLong("grace_until_" + pkg, 0); }
+    /** Schonfrist starten – höchstens einmal pro Stunde je App */
+    public boolean grantGrace(String pkg) {
+        int g = graceMin();
+        if (g <= 0) return false;
+        long now = System.currentTimeMillis();
+        if (now - p.getLong("grace_at_" + pkg, 0) < 60 * 60 * 1000) return false;
+        p.edit().putLong("grace_at_" + pkg, now).putLong("grace_until_" + pkg, now + g * 60 * 1000L).apply();
+        return true;
+    }
+
     // ---------- Kurze Freigaben ----------
     /** Wegklicken bei Stufe 1: eine App für kurze Zeit freigeben */
     public void allow(String pkg, long ms) { p.edit().putLong("pass_" + pkg, System.currentTimeMillis() + ms).apply(); }
